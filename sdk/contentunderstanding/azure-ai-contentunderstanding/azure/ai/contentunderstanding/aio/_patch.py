@@ -282,6 +282,30 @@ class ContentUnderstandingClient(GeneratedClient):
         # Wrap in custom poller with .operation_id property (without re-initializing)
         return AnalyzeAsyncLROPoller.from_poller(poller)  # pyright: ignore[reportReturnType]  # fmt: skip
 
+    @distributed_trace_async
+    async def get_analyze_result(
+        self, operation_id: str, **kwargs: Any
+    ) -> _models.ContentAnalyzerAnalyzeOperationStatus:
+        """Get the status and result of an analyze operation by its operation ID.
+
+        This is a non-blocking, stateless alternative to awaiting the poller returned by
+        :meth:`begin_analyze`. It is intended for event-driven or message-based architectures
+        where the process that starts an operation is not the same process that retrieves the
+        result. Persist only the short ``operation_id`` (available from
+        :attr:`~azure.ai.contentunderstanding.aio.models.AnalyzeAsyncLROPoller.operation_id`),
+        then call this method from any worker to fetch the current status and, once available,
+        the result.
+
+        :param operation_id: The unique ID of the analyze operation. Required.
+        :type operation_id: str
+        :return: The operation status envelope, including ``status``, ``result`` (once succeeded),
+         ``usage``, and ``error`` (on failure). The ContentAnalyzerAnalyzeOperationStatus is
+         compatible with MutableMapping.
+        :rtype: ~azure.ai.contentunderstanding.models.ContentAnalyzerAnalyzeOperationStatus
+        :raises ~azure.core.exceptions.HttpResponseError:
+        """
+        return await self._get_result(operation_id, **kwargs)
+
 
 def patch_sdk():
     """Do not remove from this file.

@@ -11,6 +11,7 @@ Tests for Content Understanding analyzer operation ID functionality.
 
 import pytest
 from unittest.mock import Mock, patch
+from azure.core.credentials import AzureKeyCredential
 from azure.core.polling import LROPoller, PollingMethod
 from azure.ai.contentunderstanding.models._patch import (
     AnalyzeLROPoller,
@@ -69,7 +70,10 @@ class TestAnalyzeLROPoller:
 
         # Create poller instance
         poller = AnalyzeLROPoller(
-            client=Mock(), initial_response=Mock(), deserialization_callback=Mock(), polling_method=mock_polling_method
+            client=Mock(),
+            initial_response=Mock(),
+            deserialization_callback=Mock(),
+            polling_method=mock_polling_method,
         )
 
         # Test operation_id property
@@ -89,7 +93,10 @@ class TestAnalyzeLROPoller:
 
         # Create poller instance
         poller = AnalyzeLROPoller(
-            client=Mock(), initial_response=Mock(), deserialization_callback=Mock(), polling_method=mock_polling_method
+            client=Mock(),
+            initial_response=Mock(),
+            deserialization_callback=Mock(),
+            polling_method=mock_polling_method,
         )
 
         # Test operation_id property raises ValueError when header is missing
@@ -111,7 +118,10 @@ class TestAnalyzeLROPoller:
 
         # Create poller instance
         poller = AnalyzeLROPoller(
-            client=Mock(), initial_response=Mock(), deserialization_callback=Mock(), polling_method=mock_polling_method
+            client=Mock(),
+            initial_response=Mock(),
+            deserialization_callback=Mock(),
+            polling_method=mock_polling_method,
         )
 
         # Test operation_id property raises ValueError when URL format is invalid
@@ -134,7 +144,9 @@ class TestAnalyzeLROPoller:
         )
 
         assert isinstance(poller, AnalyzeLROPoller)
-        mock_polling_method.from_continuation_token.assert_called_once_with("test-token")
+        mock_polling_method.from_continuation_token.assert_called_once_with(
+            "test-token"
+        )
 
 
 class TestPollerIntegration:
@@ -157,7 +169,9 @@ class TestPollerIntegration:
         mock_polling_method._initial_response = mock_initial_response
 
         # Create actual AnalyzeLROPoller instance
-        result = AnalyzeLROPoller(mock_client, mock_initial_response, Mock(), mock_polling_method)
+        result = AnalyzeLROPoller(
+            mock_client, mock_initial_response, Mock(), mock_polling_method
+        )
 
         # Verify it has the operation_id property
         assert isinstance(result, AnalyzeLROPoller)
@@ -276,3 +290,43 @@ class TestAnalyzeLROPollerUsage:
         assert not poller.done()
         usage = poller.usage
         assert usage is None
+
+
+class TestGetAnalyzeResult:
+    """Test the public get_analyze_result method (GitHub issue #47951)."""
+
+    def _make_client(self):
+        """Create a client instance without making any network calls."""
+        return ContentUnderstandingClient(
+            endpoint="https://fake.cognitiveservices.azure.com",
+            credential=AzureKeyCredential("fake-key"),
+        )
+
+    def test_get_analyze_result_delegates_to_get_result(self):
+        """get_analyze_result should call the internal _get_result with the operation_id."""
+        client = self._make_client()
+        sentinel = Mock(name="ContentAnalyzerAnalyzeOperationStatus")
+
+        with patch.object(
+            client, "_get_result", return_value=sentinel
+        ) as mock_get_result:
+            result = client.get_analyze_result("test-op-id")
+
+        mock_get_result.assert_called_once_with("test-op-id")
+        assert result is sentinel
+
+    def test_get_analyze_result_forwards_kwargs(self):
+        """get_analyze_result should forward extra keyword arguments to _get_result."""
+        client = self._make_client()
+
+        with patch.object(
+            client, "_get_result", return_value=Mock()
+        ) as mock_get_result:
+            client.get_analyze_result("op-id", headers={"x-custom": "1"})
+
+        mock_get_result.assert_called_once_with("op-id", headers={"x-custom": "1"})
+
+    def test_get_analyze_result_is_public(self):
+        """The method should be a public (non-underscore) attribute of the client."""
+        assert hasattr(ContentUnderstandingClient, "get_analyze_result")
+        assert not "get_analyze_result".startswith("_")

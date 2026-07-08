@@ -9,9 +9,12 @@
 Tests for Content Understanding async analyzer operation ID and usage functionality.
 """
 
-from unittest.mock import Mock
+import asyncio
+from unittest.mock import Mock, AsyncMock, patch
+from azure.core.credentials import AzureKeyCredential
 from azure.ai.contentunderstanding.aio.models._patch import AnalyzeAsyncLROPoller
 from azure.ai.contentunderstanding.models import UsageDetails
+from azure.ai.contentunderstanding.aio import ContentUnderstandingClient
 
 
 class TestAnalyzeAsyncLROPollerUsage:
@@ -84,7 +87,48 @@ class TestAnalyzeAsyncLROPollerUsage:
 
     def test_async_usage_returns_none_before_completion(self):
         """Test async usage property returns None when the polling has not yet completed."""
-        poller = self._make_async_poller_with_usage({"documentPagesStandard": 1}, done=False)
+        poller = self._make_async_poller_with_usage(
+            {"documentPagesStandard": 1}, done=False
+        )
         assert not poller.done()
         usage = poller.usage
         assert usage is None
+
+
+class TestGetAnalyzeResultAsync:
+    """Test the public async get_analyze_result method (GitHub issue #47951)."""
+
+    def _make_client(self):
+        """Create an async client instance without making any network calls."""
+        return ContentUnderstandingClient(
+            endpoint="https://fake.cognitiveservices.azure.com",
+            credential=AzureKeyCredential("fake-key"),
+        )
+
+    def test_async_get_analyze_result_delegates_to_get_result(self):
+        """get_analyze_result should await the internal _get_result with the operation_id."""
+        client = self._make_client()
+        sentinel = Mock(name="ContentAnalyzerAnalyzeOperationStatus")
+
+        with patch.object(
+            client, "_get_result", new=AsyncMock(return_value=sentinel)
+        ) as mock_get_result:
+            result = asyncio.run(client.get_analyze_result("test-op-id"))
+
+        mock_get_result.assert_awaited_once_with("test-op-id")
+        assert result is sentinel
+
+    def test_async_get_analyze_result_forwards_kwargs(self):
+        """get_analyze_result should forward extra keyword arguments to _get_result."""
+        client = self._make_client()
+
+        with patch.object(
+            client, "_get_result", new=AsyncMock(return_value=Mock())
+        ) as mock_get_result:
+            asyncio.run(client.get_analyze_result("op-id", headers={"x-custom": "1"}))
+
+        mock_get_result.assert_awaited_once_with("op-id", headers={"x-custom": "1"})
+
+    def test_async_get_analyze_result_is_public(self):
+        """The method should be a public (non-underscore) attribute of the async client."""
+        assert hasattr(ContentUnderstandingClient, "get_analyze_result")

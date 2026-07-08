@@ -2,6 +2,15 @@
 
 ## 1.2.0b3 (Unreleased)
 
+### Features Added
+
+- Added `get_analyze_result(operation_id)` to the sync and async
+  `ContentUnderstandingClient`. This returns a
+  `ContentAnalyzerAnalyzeOperationStatus` (status, result, usage, error) for a
+  given operation ID without awaiting the poller, enabling stateless /
+  event-driven consumers to retrieve analyze results from a different process
+  by persisting only the short `operation_id`.
+
 ### Other Changes
 
 - Added GitHub Copilot skills under `.github/skills/` to help users
